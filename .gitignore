@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.env
+.cache/
+.venv/
+.idea/
+*.iml
+dist/
+*.egg-info/
+.pytest_cache/
+
+# Test coverage and package build output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+build/
