@@ -73,3 +73,26 @@ pytest -q    # 30 tests, all offline (synthetic data)
 - Backtests execute at the next bar's open with commission + slippage,
   and support/resistance use trailing windows only. Treat any backtest
   without those properties as fiction.
+
+### CI and coverage
+
+The `Tests and package build` GitHub Actions workflow runs on pushes to `main`
+and `feature/**`, and on pull requests to `main`:
+
+- Offline tests on Python 3.10 and 3.12, with coverage for the whole
+  `stock_analyzer` package (including branch coverage).
+- Coverage tables in the job logs and GitHub job summaries, plus downloadable
+  XML and HTML reports under each run's artifacts.
+- Source distribution and wheel builds, package metadata checks, and a clean
+  wheel-install/import smoke test. Built packages are available as artifacts;
+  nothing is published to PyPI.
+
+Run the same coverage check locally:
+
+```bash
+pip install -e '.[dev]'
+python -m pytest -q --cov=stock_analyzer --cov-branch --cov-report=term-missing --cov-report=html
+```
+
+Coverage is reported without a minimum threshold. External data providers,
+optional LLM providers, CLI and scheduled-job paths are not fully covered yet.
