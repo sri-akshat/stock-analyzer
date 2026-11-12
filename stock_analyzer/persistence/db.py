@@ -49,6 +49,22 @@ CREATE TABLE IF NOT EXISTS outcomes (
     pnl_pct REAL,
     detail TEXT
 );
+CREATE TABLE IF NOT EXISTS paper_positions (
+    symbol TEXT PRIMARY KEY,
+    quantity INTEGER NOT NULL,
+    entry_price REAL NOT NULL,
+    entry_ts TEXT NOT NULL,
+    stop_price REAL
+);
+CREATE TABLE IF NOT EXISTS paper_trades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    action TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    price REAL NOT NULL,
+    pnl REAL
+);
 """
 
 
@@ -105,6 +121,61 @@ class Store:
             rows = conn.execute(
                 "SELECT * FROM signals ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
             return [dict(r) for r in rows]
+
+    # --- paper trading tables -------------------------------------------
+
+    def open_paper(self, symbol: str, quantity: int, price: float,
+                   stop_price: float | None) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO paper_positions (symbol, quantity, entry_price, entry_ts, stop_price)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (symbol, quantity, price, self._now(), stop_price))
+            conn.execute(
+                "INSERT INTO paper_trades (ts, symbol, action, quantity, price, pnl)"
+                " VALUES (?, ?, 'buy', ?, ?, NULL)",
+                (self._now(), symbol, quantity, price))
+
+    def close_paper(self, symbol: str, price: float, pnl: float) -> None:
+        with self._conn() as conn:
+            pos = conn.execute(
+                "SELECT quantity FROM paper_positions WHERE symbol = ?", (symbol,)).fetchone()
+            if pos:
+                conn.execute(
+                    "INSERT INTO paper_trades (ts, symbol, action, quantity, price, pnl)"
+                    " VALUES (?, ?, 'sell', ?, ?, ?)",
+                    (self._now(), symbol, pos["quantity"], price, pnl))
+            conn.execute("DELETE FROM paper_positions WHERE symbol = ?", (symbol,))
+
+    def open_paper_position(self, symbol: str) -> dict | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM paper_positions WHERE symbol = ?", (symbol,)).fetchone()
+            return dict(row) if row else None
+
+    def open_paper_positions(self) -> list[dict]:
+        with self._conn() as conn:
+            return [dict(r) for r in conn.execute("SELECT * FROM paper_positions").fetchall()]
+
+    def paper_trade_count(self) -> int:
+        with self._conn() as conn:
+            return int(conn.execute(
+                "SELECT COUNT(*) AS n FROM paper_trades WHERE action = 'sell'").fetchone()["n"])
+
+    def paper_realized_pnl(self) -> float:
+        with self._conn() as conn:
+            row = conn.execute("SELECT COALESCE(SUM(pnl), 0) AS pnl FROM paper_trades").fetchone()
+            return float(row["pnl"])
+
+    def paper_cash(self, initial_capital: float) -> float:
+        with self._conn() as conn:
+            bought = conn.execute(
+                "SELECT COALESCE(SUM(quantity * price), 0) AS v FROM paper_trades WHERE action = 'buy'"
+            ).fetchone()["v"]
+            sold = conn.execute(
+                "SELECT COALESCE(SUM(quantity * price), 0) AS v FROM paper_trades WHERE action = 'sell'"
+            ).fetchone()["v"]
+            return float(initial_capital - bought + sold)
 
     def consult_agreement(self) -> dict:
         """How often the SOTA consult agrees vs disagrees (feeds item 16)."""
