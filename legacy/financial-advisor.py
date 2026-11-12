@@ -1,3 +1,4 @@
+import os
 import yfinance as yf
 import requests
 import asyncio
@@ -18,8 +19,8 @@ TOLERANCE = 0.5  # Percentage tolerance for support level stability
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # api keys
-FINHUB_API_KEY = 'csir2l1r01qt46e82fp0csir2l1r01qt46e82fpg'
-FRED_API_KEY = '19b2644b5289ed570d208fa66035ca24'
+FINHUB_API_KEY = os.environ.get('FINNHUB_API_KEY', '')  # rotated; was hardcoded
+FRED_API_KEY = os.environ.get('FRED_API_KEY', '')  # rotated; was hardcoded
 
 # Detect dynamic support levels based on recent lows
 def detect_dynamic_support_levels(stock_data, window=20, threshold=0.01):
@@ -137,7 +138,7 @@ def fetch_institutional_holdings(ticker):
   return None
 
 def fetch_institutional_holdings_fmp(ticker):
-  api_key = "fGnVWQVRsPQbjNmEAHa97dSMhohpmCzQ"
+  api_key = os.environ.get('API_KEY', '')  # rotated; was hardcoded
   url = f"https://financialmodelingprep.com/api/v3/institutional-holder/{ticker}?apikey={api_key}"
   response = requests.get(url)
   if response.status_code == 200:
@@ -148,7 +149,7 @@ def fetch_institutional_holdings_fmp(ticker):
 
 def fetch_institutional_holdings_sec(ticker):
   # Initialize the QueryApi with your sec-api.io API key
-  api_key = "abaf4774e92aba3591c423c8ae115c6ca5c4c8a053f15aef4da076beaee924f2"  # Replace with your actual sec-api.io API key
+  api_key = os.environ.get('API_KEY', '')  # rotated; was hardcoded  # Replace with your actual sec-api.io API key
   query_api = QueryApi(api_key=api_key)
 
   # Define the query to fetch 13F filings for the specified ticker
@@ -214,7 +215,7 @@ def fetch_short_interest(ticker):
   return None
 
 def fetch_short_interest_alpha_vantage(ticker):
-  api_key = "00X7KSIC3V1XLQOD"
+  api_key = os.environ.get('API_KEY', '')  # rotated; was hardcoded
   url = f"https://www.alphavantage.co/query?function=SHORT_INTEREST&symbol={ticker}&apikey={api_key}"
   response = requests.get(url)
   if response.status_code == 200:
@@ -225,7 +226,7 @@ def fetch_short_interest_alpha_vantage(ticker):
     return None
 
 def fetch_short_interest(ticker):
-  api_key = '5cdb0ff8c113498ea3075ea8483c59d1'
+  api_key = os.environ.get('API_KEY', '')  # rotated; was hardcoded
   url = f"https://api.twelvedata.com/statistics?symbol={ticker}&apikey={api_key}"
   response = requests.get(url)
 
